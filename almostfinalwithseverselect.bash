@@ -33,7 +33,17 @@ Official_install(){
     sudo apt update && sudo apt upgrade -y
 
     # 5. Install ROS 2
-    sudo apt install -y "ros-$1-desktop"
+    if [ "$IS_SERVER" = true ]; then
+        sudo apt install -y ros-$1-ros-base
+    elif [ "$IS_SERVER" = true && "$FORCED_DESKTOP" = true]; then
+        warn "This is not a Viable Choice"
+        continue
+    elif [ "$IS_SERVER" = false && "$FORCED_SERVER" = true]; then
+        sudo apt install -y ros-$1-ros-base
+    else
+        sudo apt install -y ros-$1-desktop
+    fi
+
 
     # 6. Source ROS setup file
     echo "source /opt/ros/$1/setup.bash" >> ~/.bashrc
@@ -41,8 +51,6 @@ Official_install(){
 
     echo "ROS 2 $1 installation completed successfully!"
 }
-
-
 
 # Function to handle fresh ROS installation
 install_lobby() {
@@ -135,6 +143,12 @@ repair_installation() {
 
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
+# DISTRO = Ubuntu
+# VERSION = 22.04
+# INSTALLED_ROS
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
+
+
 echo "Checking system information..."
 # Get Distro & Version (Using /etc/os-release)
 [ -f /etc/os-release ] && . /etc/os-release
@@ -153,6 +167,26 @@ for dir in "${ROS_DIRS[@]}"; do
     INSTALLED_ROS+=("$(basename "$dir")")
 done
 
+# Check for ubuntu-desktop or ubuntu-server packages with version info
+if dpkg -l ubuntu-desktop 2>/dev/null | grep -q "^ii"; then
+    # Get the package details
+    PACKAGE_INFO=$(dpkg -l ubuntu-desktop | grep "^ii")
+    PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
+    PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
+    HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
+    IS_SERVER= false
+    # echo -e "$HOST_OS_INFO"
+    
+elif dpkg -l ubuntu-server 2>/dev/null | grep -q "^ii"; then
+    # Get the package details
+    PACKAGE_INFO=$(dpkg -l ubuntu-server | grep "^ii")
+    PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
+    PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
+    HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
+    IS_SERVER= true
+else
+    echo "Could not determine system type through packages"
+fi
 
 # Call appropriate function
 if [ ${#INSTALLED_ROS[@]} -gt 0 ]; then
