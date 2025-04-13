@@ -342,7 +342,7 @@ clear
 
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/Utilities\e\\@Koustav Betal\e]8;;\e\\"
+decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/ros_manager\e\\@Koustav Betal\e]8;;\e\\"
 parse_args "$@"
 Sys_Info
 # feedback_callback
