@@ -1,50 +1,118 @@
 #!/bin/bash
 
 warn() { echo -e "\e[1;31m$1\e[0m"; }
+passed() { echo -e "\e[1;32m$1\e[0m"; }
 # For more details about colour codes: 
 # https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 # https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 
+feedback_callback() { 
+    echo -e "\n$(printf '=%.0s' {1..21}) = - = O = - = $(printf '=%.0s' {1..22})"
+    echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e"
+    echo "$(printf '=%.0s' {1..22}) = - = O = - = $(printf '=%.0s' {1..22})"
+}
+
 decorator(){
-clear
-
-TERM_WIDTH=$(tput cols) # Get terminal width
-ICON="[@_@]" # Create a simple ASCII icon that works in any terminal
-
-TOTAL_LENGTH=$((${#ICON} + 1 + ${#1}))  # Calculate spaces needed to center the message with the icon  [Icon + space + Message]
-
-# Determine outer separator width (300% of message or terminal width, whichever is less)
-OUTER_WIDTH=$(( TOTAL_LENGTH * 300 / 100 ))
-if (( OUTER_WIDTH > TERM_WIDTH )); then
-    OUTER_WIDTH=$TERM_WIDTH
-fi
-
-# Create outer separator line
-SEPARATOR=$(printf '%*s' "$OUTER_WIDTH" | tr ' ' '=')
-
-# Create inner separator that's 200% of message (or terminal width, whichever is less)
-INNER_WIDTH=$(( TOTAL_LENGTH * 200 / 100 ))
-if (( INNER_WIDTH > TERM_WIDTH )); then
-    INNER_WIDTH=$TERM_WIDTH
-fi
-INNER_SEPARATOR=$(printf '%*s' "$INNER_WIDTH" | tr ' ' '*')
-
-# Calculate padding for centering everything
-OUTER_PADDING=$(( (TERM_WIDTH - OUTER_WIDTH) / 2 ))
-INNER_PADDING=$(( (TERM_WIDTH - INNER_WIDTH) / 2 ))
-TEXT_PADDING=$(( (OUTER_WIDTH - TOTAL_LENGTH) / 2 ))
-
-# Print the banner with additional separators
-printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
-printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
-printf "%*s%s %s\n" $(( OUTER_PADDING + TEXT_PADDING )) "" "$ICON" "$1"
-printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
-printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
+    TERM_WIDTH=$(tput cols) # Get terminal width
+    ICON="[@_@]" # Create a simple ASCII icon that works in any terminal
+    ORIGINAL_MSG="$1"  # Keep the original message with escape sequences
+    
+    # Remove ANSI escape sequences from input for length calculation only
+    CLEAN_MSG=$(echo -e "$1" | sed -r 's/\x1B\[[0-9;]*[mK]//g; s/\x1B\]8;;[^[]+\x1B\\//g; s/\x1B\]8;;\x1B\\//g')
+    
+    TOTAL_LENGTH=$(( ${#ICON} + 1 + ${#CLEAN_MSG} )) # Calculate spaces based on clean message
+    
+    # Rest of your centering code remains the same
+    OUTER_WIDTH=$(( TOTAL_LENGTH * 300 / 100 ))
+    if (( OUTER_WIDTH > TERM_WIDTH )); then
+        OUTER_WIDTH=$TERM_WIDTH
+    fi
+    SEPARATOR=$(printf '%*s' "$OUTER_WIDTH" | tr ' ' '=')
+    
+    INNER_WIDTH=$(( TOTAL_LENGTH * 200 / 100 ))
+    if (( INNER_WIDTH > TERM_WIDTH )); then
+        INNER_WIDTH=$TERM_WIDTH
+    fi
+    INNER_SEPARATOR=$(printf '%*s' "$INNER_WIDTH" | tr ' ' '*')
+    
+    OUTER_PADDING=$(( (TERM_WIDTH - OUTER_WIDTH) / 2 ))
+    INNER_PADDING=$(( (TERM_WIDTH - INNER_WIDTH) / 2 ))
+    TEXT_PADDING=$(( (OUTER_WIDTH - TOTAL_LENGTH) / 2 ))
+    
+    # Print with the original message that contains escape sequences
+    printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
+    printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
+    printf "%*s%s %b\n" $(( OUTER_PADDING + TEXT_PADDING )) "" "$ICON" "$ORIGINAL_MSG"
+    printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
+    printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
 }
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- Functional Programs-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
 
+parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        arged="true"
+        case "$1" in
+            -v|--version)
+            VERSION_VALID=false
+            for distro in "${VALID_ROS_DISTROS[@]}"; do
+                if [[ "$2" == "$distro" ]]; then
+                    VERSION="$2"
+                    VERSION_VALID=true
+                    break
+                fi
+            done
+
+            if [[ "$VERSION_VALID" == true ]]; then
+                shift 2
+            else
+                echo -e "\e[1;31mInvalid ROS version: $2\e[0m"
+                echo "Accepted values: ${VALID_ROS_DISTROS[*]}"
+                exit 1
+            fi
+            ;;
+
+            -f|--force)
+                if [[ "$2" =~ ^(desktop|server)$ ]]; then
+                    FORCED="$2"
+                    shift 2
+                else
+                    warn "Invalid install type: $2"
+                    echo -e "\e[3mAccepted values: desktop or server \n[Use: -h for more Info.]\e[0m" 
+                    exit 1
+                fi
+                ;;
+            -d|--dev)
+                DEV_TOOLS=true
+                shift
+                ;;
+            -h|--help)
+                echo -e "Usage: $0 [OPTIONS]\n"
+                echo "Options:"
+                echo "  -v, --version <ros_distro>     Set ROS version (${VALID_ROS_DISTROS[*]})"
+                echo "  -f, --force <desktop|server>   Force install type"
+                echo "  -d, --dry-run                  [Under-Development]"
+                echo "  -h, --help                     Show this help message"
+                exit 0
+                ;;
+            *)
+                echo -e "\e[1;31mUnknown option: $1\e[0m"
+                exit 1
+
+                ;;
+        esac
+        
+    done
+    if [[ "$arged" == "true" ]]; then 
+        echo -e "\e[1;3;34mUser Request Accepted :\e[0m"
+        echo -e "$VERSION-$FORCED"
+        Official_install $VERSION
+    fi
+
+}
+
 Sys_Info(){
+
     # Get Distro & Version (Using /etc/os-release)
     [ -f /etc/os-release ] && . /etc/os-release
     DISTRO="$NAME" || DISTRO="Unknown"
@@ -91,8 +159,42 @@ Sys_Info(){
         fi
     fi
 
+    # Call appropriate function
+    if [ ${#INSTALLED_ROS[@]} -gt 0 ]; then
+        repair_installation
+    else
+        install_lobby
+    fi
+
+
 }
 
+distro_picker(){
+    # Present menu to choose another ROS 2 version
+        echo "Choose a different ROS 2 distribution:"
+        echo "  h) Humble Hawksbill"
+        echo "  i) Iron Irwini"
+        echo "  j) Jazzy Jalisco"
+        echo "  r) Rolling Reidly"
+        echo "  q) Quit"
+        while true; do
+            read -p "Enter your choice: " ROS_CHOICE
+            [[ "$ROS_CHOICE" =~ ^[hijrq]$ ]] && break  # Loop until valid choice
+            echo "Invalid choice! Choose wisely..."
+        done
+
+    # Map short names to full version names
+    case "$ROS_CHOICE" in
+        h) DISTRO="humble" ;;
+        i) DISTRO="iron" ;;
+        j) DISTRO="jazzy" ;;
+        r) DISTRO="rolling" ;;
+        q) echo "Exiting..."; exit 0 ;;
+    esac
+    # Print confirmation
+    echo "Proceeding to Install $DISTRO..."
+    Official_install $DISTRO
+}
 uninstall_ros(){
     echo "uninstalling $1"
 
@@ -133,25 +235,40 @@ Official_install(){
     sudo apt update && sudo apt upgrade -y
 
     # 5. Install ROS 2
-    if [ "$IS_SERVER" = true ]; then
+    if [ "$IS_SERVER" = "true" ]; then
         sudo apt install -y ros-$1-ros-base
-    elif [ "$IS_SERVER" = true && "$FORCED_DESKTOP" = true]; then
+    elif [ "$IS_SERVER" = "true" && "$FORCED" = "desktop"]; then
         warn "This is not a Viable Choice"
         echo " Proceeding to install $1-Desktop"
         sudo apt install -y ros-$1-desktop
-    elif [ "$IS_SERVER" = false && "$FORCED_SERVER" = true]; then
+    elif [ "$IS_SERVER" = "false" && "$FORCED" = "server"]; then
         sudo apt install -y ros-$1-ros-base
     else
         sudo apt install -y ros-$1-desktop
     fi
 
-    # 6. Source ROS setup file
-    echo "source /opt/ros/$1/setup.bash" >> ~/.bashrc
-    source ~/.bashrc
+    # 5.5 Install Dev Tools
+    if [ "$DEV_TOOLS" = "true" ]; then
+        sudo apt install ros-dev-tools
+    fi
 
-    echo "ROS 2: $1 installation completed successfully!"
+    wrap_up
+    
 }
 
+wrap_up(){
+    passed "ROS 2: $1 installation completed successfully!"
+
+    read -p "Do You Want ROS to be Initiated on Startup?? (Y/n): "
+    if [[ "$choice" =~ ^[Yy]$|^$ ]]; then
+        echo "source /opt/ros/$1/setup.bash" >> ~/.bashrc
+        source ~/.bashrc
+        feedback_callback
+    elif [[ "$choice" =~ ^[Nn]$ ]]; then
+        feedback_callback
+    fi
+    
+}
 # Function to handle fresh ROS installation
 install_lobby() {
     # Suggest the best ROS version based on Ubuntu version
@@ -179,32 +296,6 @@ install_lobby() {
     fi
 }
 
-distro_picker(){
-    # Present menu to choose another ROS 2 version
-        echo "Choose a different ROS 2 distribution:"
-        echo "  h) Humble Hawksbill"
-        echo "  i) Iron Irwini"
-        echo "  j) Jazzy Jalisco"
-        echo "  r) Rolling Reidly"
-        echo "  q) Quit"
-        while true; do
-            read -p "Enter your choice: " ROS_CHOICE
-            [[ "$ROS_CHOICE" =~ ^[hijrq]$ ]] && break  # Loop until valid choice
-            echo "Invalid choice! Choose wisely..."
-        done
-
-    # Map short names to full version names
-    case "$ROS_CHOICE" in
-        h) DISTRO="humble" ;;
-        i) DISTRO="iron" ;;
-        j) DISTRO="jazzy" ;;
-        r) DISTRO="rolling" ;;
-        q) echo "Exiting..."; exit 0 ;;
-    esac
-    # Print confirmation
-    echo "Proceeding to Install $DISTRO..."
-    Official_install $DISTRO
-}
 
 
 # Function to handle existing ROS installation
@@ -212,8 +303,7 @@ repair_installation() {
     echo -e "Host machine already has \e[1;34m$(echo "${INSTALLED_ROS[*]}" | tr '[:lower:]' '[:upper:]')\e[0m installed."
     read -p "Do you still want to proceed? (y/N): " proceed_choice
     [[ "$proceed_choice" =~ ^[Nn]$|^$ ]] && \
-    echo -e "To Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && \
-    exit 0
+    feedback_callback && exit 0
 
     # Ask user whether to uninstall or do a parallel install
     echo -e "Do you wish to \e[1;34mUninstall $(echo "${INSTALLED_ROS[*]}" | tr '[:lower:]' '[:upper:]')\e[0m and Proceed with Another Version (u) \nOr Do you wish to proceed with \e[1;31m$(echo Parallel Install | tr '[:lower:]' '[:upper:]')\e[0m (p)? \n\e[1;3mQuit (q)\e[0m"
@@ -230,7 +320,7 @@ repair_installation() {
             warn "Parallel Installation may Lead to Numerous Issues!"
             echo -e "\e[3mHere's the\e[0m \e]8;;https://www.reddit.com/r/ROS/comments/1iegfmz/comment/ma9avz5/\e\\statement of Open Robotics\e]8;;\e\\"
             read -p "Do You Still Want to Proceed? (y/N): " parallel_choice
-            [[ "$parallel_choice" =~ ^[Nn]$|^$ ]] && echo -e "To Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && \
+            [[ "$parallel_choice" =~ ^[Nn]$|^$ ]] && feedback_callback && \
             exit 0 || \
             echo -e "\e[3mJust for the Record... You Chose Violence!!\e[0m" 
             distro_picker
@@ -249,13 +339,12 @@ In main we are checking:
 2. Determining the flow of the script acccording to the system.
 '
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
+# sudo -v
+clear
 
+VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-decorator "Checking System Information..."
+decorator "ROS Installer Script by \e]8;;https://github.com/koustavbetal/Utilities\e\\@Koustav Betal\e]8;;\e\\"
+parse_args "$@"
 Sys_Info
-# Call appropriate function
-if [ ${#INSTALLED_ROS[@]} -gt 0 ]; then
-    repair_installation
-else
-    install_lobby
-fi
+# feedback_callback
