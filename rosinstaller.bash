@@ -89,16 +89,15 @@ parse_args() {
             -h|--help)
                 echo -e "Usage: $0 [OPTIONS]\n"
                 echo "Options:"
-                echo "  -v, --version <ros_distro>     Set ROS version (${VALID_ROS_DISTROS[*]})"
-                echo "  -f, --force <desktop|server>   Force install type"
-                echo "  -d, --dry-run                  [Under-Development]"
-                echo "  -h, --help                     Show this help message"
+                echo "  -v, --version [command]         Set ROS version (${VALID_ROS_DISTROS[*]})"
+                echo "  -f, --force [command]           Force install type [desktop | server]"
+                echo "  -d, --dev                       whether to Download ros-dev-tools or not"
+                echo "  -h, --help                      Show this help message"
                 exit 0
                 ;;
             *)
                 echo -e "\e[1;31mUnknown option: $1\e[0m"
                 exit 1
-
                 ;;
         esac
         
@@ -235,25 +234,24 @@ Official_install(){
     sudo apt update && sudo apt upgrade -y
 
     # 5. Install ROS 2
-    if [ "$IS_SERVER" = "true" ]; then
+    if [[ "$IS_SERVER" = "true" ]]; then
         sudo apt install -y ros-$1-ros-base
-    elif [ "$IS_SERVER" = "true" && "$FORCED" = "desktop"]; then
+    elif [[ "$IS_SERVER" = "true" && "$FORCED" = "desktop"]]; then
         warn "This is not a Viable Choice"
         echo " Proceeding to install $1-Desktop"
         sudo apt install -y ros-$1-desktop
-    elif [ "$IS_SERVER" = "false" && "$FORCED" = "server"]; then
+    elif [[ "$IS_SERVER" = "false" && "$FORCED" = "server"]]; then
         sudo apt install -y ros-$1-ros-base
     else
         sudo apt install -y ros-$1-desktop
     fi
 
     # 5.5 Install Dev Tools
-    if [ "$DEV_TOOLS" = "true" ]; then
+    if [[ "$DEV_TOOLS" = "true" ]]; then
         sudo apt install ros-dev-tools
     fi
 
     wrap_up
-    
 }
 
 wrap_up(){
@@ -339,12 +337,12 @@ In main we are checking:
 2. Determining the flow of the script acccording to the system.
 '
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
-# sudo -v
+sudo -v
 clear
 
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-decorator "ROS Installer Script by \e]8;;https://github.com/koustavbetal/Utilities\e\\@Koustav Betal\e]8;;\e\\"
+decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/Utilities\e\\@Koustav Betal\e]8;;\e\\"
 parse_args "$@"
 Sys_Info
 # feedback_callback
