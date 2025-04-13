@@ -5,11 +5,111 @@ warn() { echo -e "\e[1;31m$1\e[0m"; }
 # https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 # https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 
+decorator(){
+clear
+
+TERM_WIDTH=$(tput cols) # Get terminal width
+ICON="[@_@]" # Create a simple ASCII icon that works in any terminal
+
+TOTAL_LENGTH=$((${#ICON} + 1 + ${#1}))  # Calculate spaces needed to center the message with the icon  [Icon + space + Message]
+
+# Determine outer separator width (300% of message or terminal width, whichever is less)
+OUTER_WIDTH=$(( TOTAL_LENGTH * 300 / 100 ))
+if (( OUTER_WIDTH > TERM_WIDTH )); then
+    OUTER_WIDTH=$TERM_WIDTH
+fi
+
+# Create outer separator line
+SEPARATOR=$(printf '%*s' "$OUTER_WIDTH" | tr ' ' '=')
+
+# Create inner separator that's 200% of message (or terminal width, whichever is less)
+INNER_WIDTH=$(( TOTAL_LENGTH * 200 / 100 ))
+if (( INNER_WIDTH > TERM_WIDTH )); then
+    INNER_WIDTH=$TERM_WIDTH
+fi
+INNER_SEPARATOR=$(printf '%*s' "$INNER_WIDTH" | tr ' ' '*')
+
+# Calculate padding for centering everything
+OUTER_PADDING=$(( (TERM_WIDTH - OUTER_WIDTH) / 2 ))
+INNER_PADDING=$(( (TERM_WIDTH - INNER_WIDTH) / 2 ))
+TEXT_PADDING=$(( (OUTER_WIDTH - TOTAL_LENGTH) / 2 ))
+
+# Print the banner with additional separators
+printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
+printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
+printf "%*s%s %s\n" $(( OUTER_PADDING + TEXT_PADDING )) "" "$ICON" "$1"
+printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
+printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
+}
+
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- Functional Programs-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
+
+Sys_Info(){
+    # Get Distro & Version (Using /etc/os-release)
+    [ -f /etc/os-release ] && . /etc/os-release
+    DISTRO="$NAME" || DISTRO="Unknown"
+    VERSION="$VERSION_ID" || VERSION="Unknown"
+    CURRENT_DESKTOP="$VERSION_CODENAME" || CURRENT_DESKTOP="Unknown"
+
+    # TERMINATING THE FLOW IF NOT UBUNTU !
+    [ "$DISTRO" != "Ubuntu" ] && \
+    echo -e "This script only works on Ubuntu! \nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && exit 1
+
+    # Detect installed ROS 2 versions
+    ROS_DIRS=(/opt/ros/*)
+    INSTALLED_ROS=()
+
+    for dir in "${ROS_DIRS[@]}"; do
+        [ -d "$dir" ] || continue
+        INSTALLED_ROS+=("$(basename "$dir")")
+    done
+
+    # Check for ubuntu-desktop or ubuntu-server packages with version info
+    if dpkg -l ubuntu-desktop 2>/dev/null | grep -q "^ii"; then
+        # Get the package details
+        PACKAGE_INFO=$(dpkg -l ubuntu-desktop | grep "^ii")
+        PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
+        PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
+        HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
+        IS_SERVER=false
+        # echo -e "$HOST_OS_INFO"
+        
+    elif dpkg -l ubuntu-server 2>/dev/null | grep -q "^ii"; then
+        # Get the package details
+        PACKAGE_INFO=$(dpkg -l ubuntu-server | grep "^ii")
+        PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
+        PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
+        HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
+        IS_SERVER=true
+    else
+        echo "Could not determine system type through packages"
+        read -p "Do you Want to Install ROS Server Edition [ros-base] (y/N): " SERVER_DESICION
+        if [[ "$SERVER_DESICION" =~ ^[Nn]$|^$ ]]; then
+            IS_SERVER=false
+        elif [[ "$SERVER_DESICION" =~ ^[Yy]$ ]]; then
+            IS_SERVER=true
+        fi
+    fi
+
+}
+
+uninstall_ros(){
+    echo "uninstalling $1"
+
+    sudo apt remove ~nros-$1-* && sudo apt autoremove
+    sudo rm /etc/apt/sources.list.d/ros2.list
+    sudo apt update
+    sudo apt autoremove
+    # Consider upgrading for packages previously shadowed.
+    sudo apt upgrade
+    
+    install_lobby
+}
 
 Official_install(){
     # Function to set up locale and required repositories
-    echo "Setting up system environment for ROS 2..."
-
+    echo "Installing ROS 2: $1"
+    
     # 1. Set Locale
     locale  # Check if UTF-8 is set
     sudo apt update && sudo apt install -y locales
@@ -37,19 +137,19 @@ Official_install(){
         sudo apt install -y ros-$1-ros-base
     elif [ "$IS_SERVER" = true && "$FORCED_DESKTOP" = true]; then
         warn "This is not a Viable Choice"
-        continue
+        echo " Proceeding to install $1-Desktop"
+        sudo apt install -y ros-$1-desktop
     elif [ "$IS_SERVER" = false && "$FORCED_SERVER" = true]; then
         sudo apt install -y ros-$1-ros-base
     else
         sudo apt install -y ros-$1-desktop
     fi
 
-
     # 6. Source ROS setup file
     echo "source /opt/ros/$1/setup.bash" >> ~/.bashrc
     source ~/.bashrc
 
-    echo "ROS 2 $1 installation completed successfully!"
+    echo "ROS 2: $1 installation completed successfully!"
 }
 
 # Function to handle fresh ROS installation
@@ -142,52 +242,17 @@ repair_installation() {
 } 
 
 
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
-# DISTRO = Ubuntu
-# VERSION = 22.04
-# INSTALLED_ROS
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- main function -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
+: '
+In main we are checking:
+1. system information to flow without any error and automating processes.
+2. Determining the flow of the script acccording to the system.
+'
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
 
 
-echo "Checking system information..."
-# Get Distro & Version (Using /etc/os-release)
-[ -f /etc/os-release ] && . /etc/os-release
-DISTRO="$NAME" || DISTRO="Unknown"
-VERSION="$VERSION_ID" || VERSION="Unknown"
-CURRENT_DESKTOP="$VERSION_CODENAME" || CURRENT_DESKTOP="Unknown"
-
-[ "$DISTRO" != "Ubuntu" ] && echo -e "This script only works on Ubuntu! \nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && exit 1
-
-# Detect installed ROS 2 versions
-ROS_DIRS=(/opt/ros/*)
-INSTALLED_ROS=()
-
-for dir in "${ROS_DIRS[@]}"; do
-    [ -d "$dir" ] || continue
-    INSTALLED_ROS+=("$(basename "$dir")")
-done
-
-# Check for ubuntu-desktop or ubuntu-server packages with version info
-if dpkg -l ubuntu-desktop 2>/dev/null | grep -q "^ii"; then
-    # Get the package details
-    PACKAGE_INFO=$(dpkg -l ubuntu-desktop | grep "^ii")
-    PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
-    PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
-    HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
-    IS_SERVER= false
-    # echo -e "$HOST_OS_INFO"
-    
-elif dpkg -l ubuntu-server 2>/dev/null | grep -q "^ii"; then
-    # Get the package details
-    PACKAGE_INFO=$(dpkg -l ubuntu-server | grep "^ii")
-    PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
-    PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
-    HOST_OS_INFO="\e[3;34m$PACKAGE_NAME (Version: $PACKAGE_VERSION) \e[0m"
-    IS_SERVER= true
-else
-    echo "Could not determine system type through packages"
-fi
-
+decorator "Checking System Information..."
+Sys_Info
 # Call appropriate function
 if [ ${#INSTALLED_ROS[@]} -gt 0 ]; then
     repair_installation
