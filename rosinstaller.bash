@@ -236,7 +236,7 @@ function Official_install(){
         warn "This is not a Viable Choice.\nYou Should Not Install Desktop Version on a Server Build."
         echo "Redirecting to install $1-server..."
         echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
-        INSCRIPT=sudo apt install -y ros-$1-ros-base
+        INSCRIPT="sudo apt install -y ros-$1-ros-base"
     elif [[ "$IS_SERVER" = "true" ]]; then
         echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
         INSCRIPT="sudo apt install -y ros-$1-ros-base"
