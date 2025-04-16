@@ -22,7 +22,7 @@ function heading() {
 
 function feedback_callback() { 
     echo -e "\n$(printf '=%.0s' {1..22}) = - = O = - = $(printf '=%.0s' {1..23})"
-    echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e"
+    echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\"
     echo -e "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})\n"
 }
 
@@ -232,13 +232,14 @@ function  uninstall_ros(){
 
 function Official_install(){
     echo -e "\n$(printf '=%.0s' {1..60})\n"
-    if [[ "$IS_SERVER" = "true" ]]; then
+    if [[ "$IS_SERVER" = "true" && "$FORCED" = "desktop" ]]; then
+        warn "This is not a Viable Choice.\nYou Should Not Install Desktop Version on a Server Build."
+        echo "Redirecting to install $1-server..."
+        echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
+        INSCRIPT=sudo apt install -y ros-$1-ros-base
+    elif [[ "$IS_SERVER" = "true" ]]; then
         echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
         INSCRIPT="sudo apt install -y ros-$1-ros-base"
-    elif [[ "$IS_SERVER" = "true" && "$FORCED" = "desktop" ]]; then
-        warn "This is not a Viable Choice"
-        echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
-        sudo apt install -y ros-$1-ros-base
     elif [[ "$IS_SERVER" = "false" && "$FORCED" = "server" ]]; then
         echo -e "\e[1mInstalling ROS 2:\e[0m \e[1;3;36m$1-server\e[0m"
         INSCRIPT="sudo apt install -y ros-$1-ros-base"
@@ -273,7 +274,7 @@ function Official_install(){
 
     # 2. Enable required repositories
     sudo apt install -y software-properties-common
-    sudo add-apt-repository universe
+    sudo add-apt-repository universe -y
     sudo apt update && sudo apt install -y curl
 
     # 3. Add ROS 2 GPG Key and Repository
@@ -294,7 +295,6 @@ function Official_install(){
     fi
     wrap_up $1
 }
-
 
 function wrap_up(){
     passed "ROS 2: $1 installation completed successfully!"
@@ -334,7 +334,6 @@ function install_lobby() {
     fi
 }
 
-
 function repair_installation() {
     echo -e "Host machine already has \e[1;34m$(echo "${INSTALLED_ROS[*]}" | tr '[:lower:]' '[:upper:]')\e[0m installed."
     read -p "Do you still want to proceed? (y/N): " proceed_choice
@@ -367,7 +366,6 @@ function repair_installation() {
     done
 } 
 
-
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- main function -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
 : '
 In main we are checking:
@@ -380,9 +378,7 @@ FORCED=""
 DEV_TOOLS="false"
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-# sudo -v
+sudo -v
 clear
-
 decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/ros_manager\e\\@Koustav Betal\e]8;;\e\\"
-
 parse_args "$@"
