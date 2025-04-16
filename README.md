@@ -31,7 +31,7 @@ Built for Raspberry Pi, server setups, and developers who just want to get it do
 ```
 bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
 ```
-The Command Runs the Whole Script, **Recommended for New Developers**.
+The Command Runs the Whole Script, **Recommended for New Developers^**.
 
 **For Intermediate Users**, there are some Arguments you can use:
 ## Options
@@ -54,4 +54,5 @@ bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main
 </p>
 
 ### Disclaimer
-This Script is created keeping Beginers in mind, and for Intermadiate an Professional Users this may not be the Best Solution.  
+This Script is created keeping Beginner to Intermadiate user in mind, and for Professional Users this may not be the Best Solution.
+^Beginners try to understand the basic concepts of Bash(linux Terminal) and ROS CLI commands first, to become a developer, not the user.
