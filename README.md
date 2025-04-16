@@ -3,7 +3,7 @@ A Simple Script to Install or Uninstall any ROS2 Version.
 It comes with many Smart Features, to do **one click install**.
 ## Usage
 ```
-https://raw.githubusercontent.com/koustavbetal/ros_manager/refs/heads/main/rosinstaller.bash
+bash<(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/refs/heads/main/rosinstaller.bash)
 ```
 The Command Runs the Complete Script, **Recommended for New Developers**.
 
@@ -17,7 +17,7 @@ The Command Runs the Complete Script, **Recommended for New Developers**.
 ```
 ## Example
 ```
-bash < (https://raw.githubusercontent.com/koustavbetal/ros_manager/refs/heads/main/rosinstaller.bash) -v rolling -f desktop -d
+bash<(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/refs/heads/main/rosinstaller.bash) -v rolling -f desktop -d
 ```
 ## Features
 1. Detects the OS, Display Manager and other perferral settings before all to mitigate any mismatched version Installation.
