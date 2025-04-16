@@ -1,6 +1,32 @@
-# ROS Manager 
-A Simple Script to Install or Uninstall any ROS2 Version.
-It comes with many Smart Features, to do **one click install**.
+<p align="center">
+  <img src="Assets/banner.jpeg" alt="ROS Manager Banner">
+</p>
+
+<p align="center">
+  <a href="https://github.com/koustavbetal/ros_manager">
+    <img src="https://img.shields.io/github/stars/koustavbetal/ros_manager?style=flat-square&logo=github" />
+  </a>
+  <a href="https://github.com/koustavbetal/ros_manager/issues">
+    <img src="https://img.shields.io/github/issues/koustavbetal/ros_manager?style=flat-square" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/koustavbetal/ros_manager?style=flat-square" />
+  </a>
+</p>
+
+
+# ROS Manager
+
+A hassle-free, one-liner installer & uninstaller for any ROS 2 version.  
+Built for Raspberry Pi, server setups, and developers who just want to get it done.
+
+## Features
+- One-liner **install or uninstall** for ROS 2.
+- Detects **OS, display manager**, and peripheral configurations.
+- Prevents **parallel ROS installs** to avoid path conflicts.
+- Includes **developer tools** optionally.
+- Offers a **guided flow** for beginners and CLI flags for advanced users.
+
 ## Usage
 ```
 bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
@@ -19,11 +45,6 @@ The Command Runs the Whole Script, **Recommended for New Developers**.
 ```
 bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash) -v rolling -f desktop -d
 ```
-## Features
-1. Detects the OS, Display Manager and other perferral settings before all to mitigate any mismatched version Installation.
-2. Handholds the User in every step, makes it helpful for everyone.
-3. Prevents multiple Parallel Installation which may lead to path conflicts.
-4. Can uninstall any existing ROS version with one click.
 
 ### Flow Chart
 <p align="center">

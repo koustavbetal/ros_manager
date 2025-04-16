@@ -23,7 +23,7 @@ function heading() {
 function feedback_callback() { 
     echo -e "\n$(printf '=%.0s' {1..22}) = - = O = - = $(printf '=%.0s' {1..23})"
     echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e"
-    echo "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})\n"
+    echo -e "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})\n"
 }
 
 function decorator(){
@@ -305,7 +305,7 @@ function wrap_up(){
         source ~/.bashrc        
     fi
     feedback_callback
-    echo -e "e[3m;Type [ros2] to verify the Installation.\nIf 'command not found', Re-Open the Terminal Window."
+    echo -e "\e[3mType "ros2" to verify the Installation.\nIf 'command not found', Re-Open the Terminal Window."
 }
 
 function install_lobby() {
@@ -380,10 +380,9 @@ FORCED=""
 DEV_TOOLS="false"
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-sudo -v
+# sudo -v
 clear
 
 decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/ros_manager\e\\@Koustav Betal\e]8;;\e\\"
 
 parse_args "$@"
-# feedback_callback
