@@ -10,8 +10,12 @@ Koustav Betal ROS(2) Installer/Uninstaller
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-==-=-=--=-=-=-=-=-|
 
 function warn() { echo -e "\e[1;31m$1\e[0m"; }
-function heading() { echo -e "\e[1;34m$1\e[0m";}
-function passed() { echo -e "\e[1;32m$1\e[0m"; }
+function passed() { echo -e "\e[1;32m$1\e[0m";}
+function heading() { 
+    echo -e "\n$(printf '=%.0s' {1..60})"
+    echo -e "\e[1;34m$1\e[0m"
+    echo -e "$(printf '=%.0s' {1..60})"
+}
 # For more details about colour codes: 
 # https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 # https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
@@ -115,7 +119,7 @@ function parse_args() {
         
     done
     if [[ "$arged" == "true" ]]; then 
-        echo -e "\e[1;3;34mUser Request Accepted :\e[0m"
+        heading "User Request Accepted !!"
         echo -e "\e[1mDistro:\e[0m \e[3;36m$PARSED_VERSION\e[0m"
         echo -e "\e[1mType:\e[0m \e[3;36m$FORCED\e[0m"
         echo -e "\e[1mDev Tools:\e[0m \e[3;36m$DEV_TOOLS\e[0m"
@@ -131,8 +135,7 @@ function parse_args() {
 }
 
 function Sys_Info(){
-    echo -e "\n$(printf '=%.0s' {1..60})\n"
-    heading "Verifying System Information !!\n"
+    heading "Verifying System Information !!"
 
     [ -f /etc/os-release ] && . /etc/os-release
     DISTRO="$NAME" || DISTRO="Unknown"
@@ -141,7 +144,7 @@ function Sys_Info(){
 
     # TERMINATING THE FLOW IF NOT UBUNTU !
     [ "$DISTRO" != "Ubuntu" ] && \
-    echo -e "This script only works on Ubuntu! \nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && exit 1
+    warn "This script only works on Ubuntu! \nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && exit 1
 
     # Detect installed ROS 2 versions
     ROS_DIRS=(/opt/ros/*)
@@ -207,7 +210,7 @@ function distro_picker(){
         i) DISTRO="iron" ;;
         j) DISTRO="jazzy" ;;
         r) DISTRO="rolling" ;;
-        q) echo "Exiting..."; exit 0 ;;
+        q) feedback_callback; exit 0 ;;
     esac
     # Print confirmation
     echo "Proceeding to Install $DISTRO..."
@@ -258,7 +261,7 @@ function Official_install(){
     done
     tput cuu 2
     tput el
-    echo -e "\n\e[1;3;36mHere We Go...\e[0m\n"
+    echo -e "\n\e[1;3;36mHere We Go ...\e[0m\n"
 
     # 1. Set Locale
     locale  # Check if UTF-8 is set
@@ -318,7 +321,7 @@ function install_lobby() {
     fi
 
     echo -e "The host machine is running \e[1;36mUbuntu $VERSION\e[0m. \e[3m[$HOST_OS_INFO]\e[0m"
-    echo "Best Suitable for ROS 2: $RECOMMENDED_ROS."
+    echo -e "Best Suitable for ROS 2: \e[1;32m$RECOMMENDED_ROS.\e[0m"
 
     # Ask the user whether to install the suggested version
     read -p "Would you like to install $RECOMMENDED_ROS? (Y/n): " choice
@@ -376,7 +379,7 @@ FORCED=""
 DEV_TOOLS="false"
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
-# sudo -v
+sudo -v
 clear
 
 decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/ros_manager\e\\@Koustav Betal\e]8;;\e\\"
