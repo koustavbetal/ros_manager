@@ -287,7 +287,7 @@ function Official_install(){
     sudo apt update && sudo apt upgrade -y
 
     # # 5. Install ROS 2
-    INSCRIPT
+    eval "$INSCRIPT"
 
     # 5.5 Install Dev Tools
     if [[ "$DEV_TOOLS" = "true" ]]; then
