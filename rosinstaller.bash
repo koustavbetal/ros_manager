@@ -23,7 +23,7 @@ function heading() {
 function feedback_callback() { 
     echo -e "\n$(printf '=%.0s' {1..22}) = - = O = - = $(printf '=%.0s' {1..23})"
     echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e"
-    echo "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})"
+    echo "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})\n"
 }
 
 function decorator(){
@@ -226,7 +226,7 @@ function  uninstall_ros(){
     sudo apt autoremove
     # Consider upgrading for packages previously shadowed.
     sudo apt upgrade
-    
+    echo -e "\n$(printf '=%.0s' {1..60})"
     install_lobby
 }
 
@@ -305,6 +305,7 @@ function wrap_up(){
         source ~/.bashrc        
     fi
     feedback_callback
+    echo -e "e[3m;Type [ros2] to verify the Installation.\nIf 'command not found', Re-Open the Terminal Window."
 }
 
 function install_lobby() {
