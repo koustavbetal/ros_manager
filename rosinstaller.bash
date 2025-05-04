@@ -61,6 +61,11 @@ function decorator(){
     printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
 }
 
+function verify_bashrc_entry() {
+    local line="$1"
+    grep -Fxq "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
+}
+
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- Functional Programs-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#  
 
 function parse_args() {
@@ -138,13 +143,13 @@ function Sys_Info(){
     heading "Verifying System Information !!"
 
     [ -f /etc/os-release ] && . /etc/os-release
-    DISTRO="$NAME" || DISTRO="Unknown"
+    DISTRO="$ID" || DISTRO="Unknown"
     VERSION="$VERSION_ID" || VERSION="Unknown"
     CURRENT_DESKTOP="$VERSION_CODENAME" || CURRENT_DESKTOP="Unknown"
 
     # TERMINATING THE FLOW IF NOT UBUNTU !
-    [ "$DISTRO" != "Ubuntu" ] && \
-    warn "This script only works on Ubuntu! \nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && exit 1
+    [ "$DISTRO" != "ubuntu" ] && \
+    warn "This script only works on Ubuntu!" && feedback_callback && exit 1
 
     # Detect installed ROS 2 versions
     ROS_DIRS=(/opt/ros/*)
@@ -301,11 +306,10 @@ function wrap_up(){
 
     read -p "Do You Want ROS to be Initiated at Startup?? (Y/n): " env_var
     if [[ "$env_var" =~ ^[Yy]$|^$ ]]; then
-        echo "source /opt/ros/$1/setup.bash" >> ~/.bashrc
-        source ~/.bashrc        
+        verify_bashrc_entry "source /opt/ros/$1/setup.bash"        
     fi
     feedback_callback
-    echo -e "\e[3mType "ros2" to verify the Installation.\nIf 'command not found', Re-Open the Terminal Window."
+    echo -e "\e[3mTo Initialise ros_$1 for the first time, type this in the terminal\n\t\e[1msource ~/.bashrc\e[0m"
 }
 
 function install_lobby() {
@@ -347,7 +351,7 @@ function repair_installation() {
         read -p "Enter Your Decision (u/p/Q): " Decision
 
         if [[ "$Decision" =~ ^[Qq]$|^$ ]]; then
-            echo -e "To Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\ " && \
+            feedback_callback && \
             exit 1
         elif [[ "$Decision" =~ ^[Uu]$ ]]; then
             uninstall_ros "${INSTALLED_ROS[@]}"
@@ -379,6 +383,7 @@ DEV_TOOLS="false"
 VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
 
 sudo -v
-clear
+printf "\033[H\033[2J"
 decorator "ROS Installer/Uninstaller Script by \e]8;;https://github.com/koustavbetal/ros_manager\e\\@Koustav Betal\e]8;;\e\\"
+trap "echo -e '\n\n\e[1;31mInstallation interrupted by $(whoami | tr '[:lower:]' '[:upper:]').\e[0m'; feedback_callback; exit 1" SIGINT
 parse_args "$@"
