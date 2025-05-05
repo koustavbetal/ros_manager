@@ -54,6 +54,7 @@ function decorator(){
     local TEXT_PADDING=$(( (OUTER_WIDTH - TOTAL_LENGTH) / 2 ))
     
     # Print with the original message that contains escape sequences
+    echo " "
     printf "%*s%s\n" $OUTER_PADDING "" "$SEPARATOR"
     printf "%*s%s\n" $INNER_PADDING "" "$INNER_SEPARATOR"
     printf "%*s%s %b\n" $(( OUTER_PADDING + TEXT_PADDING )) "" "$ICON" "$ORIGINAL_MSG"

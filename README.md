@@ -31,7 +31,7 @@ Built for Raspberry Pi, server setups, and developers who just want to get it do
 ```
 bash <(curl -sSL bit.ly/ros-manager)
 ```
-###### or
+##### or
 ```
 bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
 ```
