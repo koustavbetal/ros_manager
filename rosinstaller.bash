@@ -22,7 +22,7 @@ function heading() {
 
 function feedback_callback() { 
     echo -e "\n$(printf '=%.0s' {1..22}) = - = O = - = $(printf '=%.0s' {1..23})"
-    echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://x.com/koustavbetal\e\\@koustav_betal\e]8;;\e\\"
+    echo -e "Thank You \e[1;32m$(whoami | tr '[:lower:]' '[:upper:]')\e[0m for Using this Script.\nTo Report an Issue or Sugessions Find me \e]8;;https://koustav.bio.link\e\\@koustav_betal\e]8;;\e\\"
     echo -e "$(printf '=%.0s' {1..23}) = - = O = - = $(printf '=%.0s' {1..23})\n"
 }
 
@@ -203,10 +203,11 @@ function distro_picker(){
         echo "  i) Iron Irwini"
         echo "  j) Jazzy Jalisco"
         echo "  r) Rolling Reidly"
+        echo "  k) Kilted Kaiju"
         echo "  q) Quit"
         while true; do
             read -p "Enter your choice: " ROS_CHOICE
-            [[ "$ROS_CHOICE" =~ ^[hijrq]$ ]] && break  # Loop until valid choice
+            [[ "$ROS_CHOICE" =~ ^[hijrkq]$ ]] && break  # Loop until valid choice
             echo "Invalid choice! Choose wisely..."
         done
 
@@ -216,6 +217,7 @@ function distro_picker(){
         i) DISTRO="iron" ;;
         j) DISTRO="jazzy" ;;
         r) DISTRO="rolling" ;;
+        k) DISTRO="kilted" ;;
         q) feedback_callback; exit 0 ;;
     esac
     # Print confirmation
@@ -381,7 +383,7 @@ In main we are checking:
 IS_SERVER="false"
 FORCED=""
 DEV_TOOLS="false"
-VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling") # List of valid ROS distros
+VALID_ROS_DISTROS=("humble" "iron" "jazzy" "rolling" "kilted") # List of valid ROS distros
 
 sudo -v
 printf "\033[H\033[2J"
