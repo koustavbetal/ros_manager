@@ -41,7 +41,7 @@ The Command Runs the Whole Script, **Recommended for New Developers^**.
 **For Intermediate Users**, there are some Arguments you can use:
 ## Options
 ```
--v, --version [command]         Set ROS version [humble | iron | jazzy | rolling]
+-v, --version [command]         Set ROS version [humble | iron | jazzy | rolling | kilted]
 -f, --force [command]           Force install type [desktop | server]
 -d, --dev                       Whether to Download ros-dev-tools or not
 -h, --help                      Show this help message

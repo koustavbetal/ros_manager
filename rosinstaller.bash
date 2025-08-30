@@ -109,10 +109,10 @@ function parse_args() {
                 shift
                 ;;
             -h|--help)
-                echo -e "Usage: $0 [OPTIONS]\n"
-                echo "Options:"
-                echo "  -v, --version [command]         Set ROS version (${VALID_ROS_DISTROS[*]})"
-                echo "  -f, --force [command]           Force install type [desktop | server]"
+                echo -e "\nUsage: ROS-MANAGER [FLAGS] [OPTIONS]\n"
+                echo "Flags:"
+                echo "  -v, --version [Option]          Set ROS version [${VALID_ROS_DISTROS[*]}]"
+                echo "  -f, --force [Option]            Force install type [desktop | server]"
                 echo "  -d, --dev                       whether to Download ros-dev-tools or not"
                 echo "  -h, --help                      Show this help message"
                 exit 0
