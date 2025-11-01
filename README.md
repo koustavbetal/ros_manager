@@ -29,11 +29,12 @@ Built for Raspberry Pi, server setups, and developers who just want to get it do
 
 ## Usage
 ```
-bash <(curl -sSL bit.ly/ros-manager)
+bash <(wget -qO- bit.ly/ros-manager) you can also use "bash <(curl -sSL bit.ly/ros-manager)"
 ```
+you can also use `curl`: ***bash <(curl -sSL bit.ly/ros-manager)*** ,if you already have curl installed.
 ##### or
 ```
-bash <(curl -sSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
+bash <(curl -fsSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
 ```
 
 The Command Runs the Whole Script, **Recommended for New Developers^**.

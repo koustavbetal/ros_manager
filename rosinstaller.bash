@@ -162,9 +162,8 @@ function Sys_Info(){
     done
 
     # Check for ubuntu-desktop or ubuntu-server packages with version info
-    if dpkg -l ubuntu-desktop 2>/dev/null | grep -q "^ii"; then
-        # Get the package details
-        PACKAGE_INFO=$(dpkg -l ubuntu-desktop | grep "^ii")
+    if dpkg -l | grep -qE "^ii\s+ubuntu-desktop(-minimal)?" 2>/dev/null; then
+        PACKAGE_INFO=$(dpkg -l | grep -E "^ii\s+ubuntu-desktop(-minimal)?" 2>/dev/null)
         PACKAGE_NAME=$(echo "$PACKAGE_INFO" | awk '{print $2}')
         PACKAGE_VERSION=$(echo "$PACKAGE_INFO" | awk '{print $3}')
         HOST_OS_INFO="\e[3;36m$PACKAGE_NAME | version:$PACKAGE_VERSION\e[0m"
