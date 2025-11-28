@@ -29,9 +29,9 @@ Built for Raspberry Pi, server setups, and developers who just want to get it do
 
 ## Usage
 ```
-bash <(wget -qO- bit.ly/ros-manager) you can also use "bash <(curl -sSL bit.ly/ros-manager)"
+bash <(wget -qO- bit.ly/ros-manager) 
 ```
-you can also use `curl`: ***bash <(curl -sSL bit.ly/ros-manager)*** ,if you already have curl installed.
+you can also use `curl`: ***bash <(curl -sSL bit.ly/ros-manager)*** if you already have curl installed.
 ##### or
 ```
 bash <(curl -fsSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/rosinstaller.bash)
