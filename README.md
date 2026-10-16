@@ -1,12 +1,11 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <img alt="ROS Manager: install ROS 2 on Ubuntu with one command" src="assets/banner-light.svg">
+    <img alt="ROS Manager: fresh Ubuntu board to working ROS 2, in one command" src="assets/banner-light.svg">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/koustavbetal/ros_manager/releases"><img alt="Release" src="https://img.shields.io/github/v/release/koustavbetal/ros_manager?style=flat-square&color=ff8700"></a>
   <img alt="Ubuntu 22.04 · 24.04 · 26.04" src="https://img.shields.io/badge/Ubuntu-22.04%20·%2024.04%20·%2026.04-E95420?style=flat-square&logo=ubuntu&logoColor=white">
   <img alt="Bash only" src="https://img.shields.io/badge/needs-bash%20%2B%20apt-4EAA25?style=flat-square&logo=gnubash&logoColor=white">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/koustavbetal/ros_manager?style=flat-square&color=5ac85a"></a>
@@ -19,10 +18,10 @@ It's a single bash file and only needs what Ubuntu already ships with, so it run
 ## Quick start
 
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/koustavbetal/ros_manager/main/ros-manager.bash)
+bash <(wget -qO- lnjstudios.com/ros-man)
 ```
 
-With curl: `bash <(curl -fsSL https://raw.githubusercontent.com/koustavbetal/ros_manager/main/ros-manager.bash)`
+With curl: `bash <(curl -fsSL lnjstudios.com/ros-man)`. The short link redirects to [`ros-manager.bash`](ros-manager.bash) in this repo; the direct URL is `https://raw.githubusercontent.com/koustavbetal/ros_manager/v2/ros-manager.bash`.
 
 The interactive flow asks a few questions in place (no full-screen dialogs) and shows exactly what it will do before it touches anything.
 
@@ -32,10 +31,10 @@ You know what you want, so skip the prompts:
 
 ```bash
 # a headless robot: ROS 2 base + Nav2 + SLAM + dev tools
-bash <(wget -qO- https://raw.githubusercontent.com/koustavbetal/ros_manager/main/ros-manager.bash) -t base -w nav2,slam -d -y
+bash <(wget -qO- lnjstudios.com/ros-man) -t base -w nav2,slam -d -y
 
 # a workstation: Jazzy desktop, simulation, arm planning
-bash <(wget -qO- https://raw.githubusercontent.com/koustavbetal/ros_manager/main/ros-manager.bash) -v jazzy -t desktop -w gazebo,moveit,urdf -d -y
+bash <(wget -qO- lnjstudios.com/ros-man) -v jazzy -t desktop -w gazebo,moveit,urdf -d -y
 ```
 
 Leave out `-v` and it picks the recommended distro for that Ubuntu. Leave out `-t` and it chooses `desktop` when a desktop is installed, `base` otherwise.
@@ -43,7 +42,7 @@ Leave out `-v` and it picks the recommended distro for that Ubuntu. Leave out `-
 ### Look before you run
 
 ```bash
-wget -O ros-manager.bash https://raw.githubusercontent.com/koustavbetal/ros_manager/main/ros-manager.bash
+wget -O ros-manager.bash lnjstudios.com/ros-man
 less ros-manager.bash
 bash ros-manager.bash -n      # dry run: the whole flow, nothing changes
 bash ros-manager.bash
@@ -86,17 +85,6 @@ It won't blindly reinstall. You get a menu instead:
 
 v1's `-f desktop|server` still works.
 
-### Keys
-
-| Key | |
-|---|---|
-| `↑` `↓` | move |
-| `Enter` | select, or toggle the highlighted item |
-| `Tab` / `Shift+Tab` | next / previous step |
-| `Esc` | close the package search |
-| `a` | toggle all plugins |
-| `q` | quit (nothing is changed) |
-
 ## Supported systems
 
 | Ubuntu | ROS 2 |
@@ -122,9 +110,20 @@ The installer stays a single bash file that runs headless, on a Pi or in CI.
 
 Issues and ideas are welcome. To test changes without touching your machine, use the Docker sandbox in [`sandbox/`](sandbox/README.md).
 
-Looking for v1 (`rosinstaller.bash`)? It lives on the [`legacy/v1`](https://github.com/koustavbetal/ros_manager/tree/legacy/v1) branch.
+Looking for v1 (`rosinstaller.bash`)? It lives on the [`v1`](https://github.com/koustavbetal/ros_manager/tree/v1) branch.
 
 ---
 
-<sub>MIT © 2025–2026 [Koustav Betal](https://github.com/koustavbetal) · [LNJ Studios](https://lnjstudios.com)<br>
-ROS is a trademark of Open Robotics. ROS Manager is an independent project and is not affiliated with or endorsed by Open Robotics.</sub>
+<p align="center">
+  <a href="https://lnjstudios.com">
+    <picture>
+      <source media="(prefers-color-scheme: light)" srcset="assets/lnj-studios-dark.svg">
+      <img alt="LNJ Studios" src="assets/lnj-studios-light.svg" height="44">
+    </picture>
+  </a>
+</p>
+
+<p align="center"><sub>
+  Made by <a href="https://github.com/koustavbetal">Koustav Betal</a> at <a href="https://lnjstudios.com">LNJ Studios</a> · MIT © 2025–2026 Koustav Betal<br>
+  ROS is a trademark of Open Robotics. ROS Manager is an independent project and is not affiliated with or endorsed by Open Robotics.
+</sub></p>
