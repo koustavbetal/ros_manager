@@ -3,7 +3,20 @@
 Test `ros-manager.bash` on a fresh Ubuntu without touching your machine.
 The image is plain Ubuntu plus a sudo user (`robot`), `wget` and `whiptail`: what a stock install ships with. No curl, no ROS.
 
-Run every command from `ros-manager_v2/`.
+Run every command from `ros-manager/`.
+
+## Before you start: Docker
+
+Check with `docker --version`. If it's missing, install Docker Engine from the official apt repository:
+[docs.docker.com/engine/install/ubuntu → Install using the apt repository](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository).
+Skip Ubuntu's own `docker.io` / snap packages; the official repo is what the docs and these scripts assume.
+
+Then let your user run Docker without `sudo` ([post-install steps](https://docs.docker.com/engine/install/linux-postinstall/)):
+
+```bash
+sudo usermod -aG docker $USER    # log out and back in (or run `newgrp docker`) for it to apply
+docker run --rm hello-world      # should print "Hello from Docker!"
+```
 
 ## Which Ubuntu for which distro
 
@@ -22,11 +35,31 @@ The script reads this mapping live from rosdistro. If a distro moves to a new Ub
 ```bash
 ./sandbox/run.bash 22.04                    # humble
 ./sandbox/run.bash 24.04                    # jazzy / kilted
-./sandbox/run.bash 26.04                    # lyrical / rolling
+./sandbox/run.bash 26.04 -n                 # lyrical / rolling | -n for dry-run
 ./sandbox/run.bash 24.04 -v kilted -t base -w nav2 -y   # any installer flags after the version
 ```
 
-It builds the image if needed, runs the installer, then leaves you in a shell inside the container. `exit` deletes the container.
+No separate build step: `run.bash` builds the image itself. The first run per Ubuntu version takes a minute
+(it pulls `ubuntu:<version>`); after that the build is cached and the container starts in a second or two.
+Changing `sandbox/Dockerfile` triggers a rebuild automatically.
+
+The installer runs straight away. When it ends (finished, failed or quit) you land in a shell inside the
+same container to check the result. `exit` deletes the container, so every `run.bash` starts from a fresh Ubuntu.
+
+### Run it again inside the container
+
+```bash
+bash /ros-manager/ros-manager.bash           # your working copy (mounted from this repo, read-only)
+bash /ros-manager/ros-manager.bash -n        # same, dry run
+bash <(wget -qO- lnjstudios.com/ros-man)     # the published version from GitHub (v2 branch)
+```
+
+- `/ros-manager/…` is the repo on your machine, so edits you save show up on the next run without restarting
+  anything. Use this while developing.
+- The link fetches what's pushed to GitHub, not your local changes. Use it to test what users actually get.
+- A second run in the same container sees ROS already installed and opens the mode menu (add plugins,
+  replace, parallel, remove). For a truly fresh test, `exit` and run `./sandbox/run.bash <version>` again.
+- A failed run can leave apt half-done (it's in the container only). Rerunning usually finishes it; if not, start fresh.
 
 ## Step by step
 
@@ -60,6 +93,7 @@ Swap the tag and name for other distros, e.g. `rosman-sandbox:22.04` / `rosman-h
 bash /ros-manager/ros-manager.bash                 # interactive
 bash /ros-manager/ros-manager.bash -n              # dry run
 bash /ros-manager/ros-manager.bash -v jazzy -t base -y
+bash <(wget -qO- lnjstudios.com/ros-man)           # the published version instead of your working copy
 ```
 
 The repo is mounted read-only, so edits on your machine show up immediately. Rerun the command without restarting the container.

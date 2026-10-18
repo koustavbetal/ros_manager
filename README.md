@@ -124,6 +124,6 @@ Looking for v1 (`rosinstaller.bash`)? It lives on the [`v1`](https://github.com/
 </p>
 
 <p align="center"><sub>
-  Made by <a href="https://github.com/koustavbetal">Koustav Betal</a> at <a href="https://lnjstudios.com">LNJ Studios</a> · MIT © 2025–2026 Koustav Betal<br>
+  Made by <a href="https://github.com/koustavbetal">Koustav Betal</a> at <a href="https://lnjstudios.com">LnJ Studios</a> · MIT © 2025–2026 Koustav Betal<br>
   ROS is a trademark of Open Robotics. ROS Manager is an independent project and is not affiliated with or endorsed by Open Robotics.
 </sub></p>
