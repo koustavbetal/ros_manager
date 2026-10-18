@@ -371,19 +371,16 @@ render_mid() {
     for (( i = 0; i < h; i++ )); do
         k=${row[i]} FIT=""
         if (( k >= 0 )); then
-            if [[ ${lines[k]} == $'\x01'* ]]; then   # (on the top row it runs into pane B's header)
-                head_line "${lines[k]#?}" "$stage" "$failed" $(( i == 0 && rw > 0 ? lw : lw - 1 )); FIT=$HEAD
+            if [[ ${lines[k]} == $'\x01'* ]]; then head_line "${lines[k]#?}" "$stage" "$failed" $(( lw - 1 )); FIT=$HEAD
             else fitv "${lines[k]}" $(( lw - 1 )); fi
         fi
         printf -v line '\e[%d;1H\e[0m\e[2K%s%s' $(( MID_TOP + i )) "$FIT" "$C_RESET"; MID+=$line
         (( rw > 0 )) || continue
-        if (( i == 0 )); then   # header: the top heading's rule runs on through ─ $ running command ───; │ starts below it
-            line=${cmd:+\$ $cmd}; k=$(( COLS - lw - 7 ))
+        if (( i == 0 )); then   # header: "$ running command ────", starting where the log text does
+            line=${cmd:+\$ $cmd}; k=$(( rw - 3 ))
             fitv "$line" "$k"; (( ${#line} < k )) && k=${#line}
-            if (( k )); then printf -v line '%*s' $(( COLS - lw - 5 - k )) ''; FIT="─ $C_CUR$FIT$C_RESET$C_SEP ${line// /─}"
-            else printf -v line '%*s' $(( COLS - lw - 2 )) ''; FIT=${line// /─}; fi   # (nothing running yet)
-            printf -v line '\e[%d;%dH%s─%s%s' $(( MID_TOP + i )) $(( lw + 1 )) "$C_SEP" "$FIT" "$C_RESET"
-            MID+=$line; continue
+            printf -v line '%*s' $(( rw - k - (k > 0) )) ''
+            FIT="$C_CUR$FIT$C_RESET$C_SEP${FIT:+ }${line// /─}"; k=""
         else
             line=${logs[i - 1]//[$'\t\r']/ }; line=${line//$'\e'/}
             fitv "$line" "$rw"; k=$C_DIM
