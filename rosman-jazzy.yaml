@@ -1,0 +1,30 @@
+# ROS Manager setup: ROS 2 Jazzy Jalisco on Tuf-KoBe, 2026-10-24 16:44
+# Rebuild it on another machine:  bash <(wget -qO- lnjstudios.com/ros-man) -i rosman-jazzy.yaml
+ros-manager: 2.1.0-dev
+distro: jazzy
+type: desktop
+ubuntu: noble
+arch: amd64
+plugins:
+  - gazebo
+  - nav2
+  - slam
+  - urdf
+  - control
+  - teleop
+packages:
+  - apriltag-ros
+  - fields2cover
+  - foxglove-bridge
+  - gz-ros2-control
+  - io-context
+  - joy-linux
+  - laser-filters
+  - nav2-loopback-sim
+  - orbbec-camera
+  - orbbec-description
+  - rosbridge-server
+  - spatio-temporal-voxel-layer
+  - topic-tools
+  - urdf-tutorial
+  - vector-pursuit-controller

@@ -61,7 +61,8 @@ MODULES=(
 )
 
 DISTRO="" ROS_TYPE="" WITH="" REMOVE=""
-MODE="" TARGET="" INSTALLED=()   # MODE: fresh | extras | parallel | replace | remove; TARGET: the installed distro acted on
+EXPORT=0 EXPORT_FILE="" IMPORT_FILE=""   # -e / -i: setup files (see "Setup files")
+MODE="" TARGET="" INSTALLED=()   # MODE: fresh | extras | parallel | replace | remove | export; TARGET: the installed distro acted on
 PREREQS=(locales software-properties-common curl ca-certificates)
 ASSUME_YES=0 DRY_RUN=0 DO_UPGRADE=1 ADD_BASHRC=1 ORIG_ARGS=()
 # ROS 2 ships setup.bash and setup.zsh (no fish etc.): the login shell picks which one, and which rc file gets it
@@ -907,6 +908,9 @@ Usage: ros-manager [OPTIONS]
       --no-upgrade         skip 'apt-get upgrade'
       --no-rc              don't add 'source /opt/ros/<distro>/setup.<bash|zsh>' to ~/.bashrc / ~/.zshrc
                            (--no-bashrc works too)
+  -e, --export [FILE]      save this machine's ROS 2 setup (distro, type, plugins, hand-picked packages) to
+                           FILE (default ./rosman-<distro>.yaml) and exit; -v picks the distro if several
+  -i, --import FILE        install a setup saved with -e (a path or an https:// URL); flags given too win
       --remove DISTRO      uninstall a ROS 2 distro
   -y, --yes                no questions, use defaults for anything not given
   -n, --dry-run            show the whole flow without changing anything
@@ -920,7 +924,7 @@ EOF
 
 # parse_args <args...>: read the command line
 #   in:  the script's arguments
-#   out: DISTRO, ROS_TYPE, WITH, PKGS_ARG, DO_UPGRADE, ADD_BASHRC, REMOVE, ASSUME_YES, DRY_RUN;
+#   out: DISTRO, ROS_TYPE, WITH, PKGS_ARG, DO_UPGRADE, ADD_BASHRC, EXPORT, EXPORT_FILE, IMPORT_FILE, REMOVE, ASSUME_YES, DRY_RUN;
 #        -h prints help and exits, an unknown option dies
 parse_args() {
     while (( $# )); do
@@ -933,6 +937,8 @@ parse_args() {
             -p|--packages) PKGS_ARG+=" ${2//,/ }"; shift ;;
             --no-upgrade)  DO_UPGRADE=0 ;;
             --no-rc|--no-bashrc) ADD_BASHRC=0 ;;
+            -e|--export)   EXPORT=1; [[ -n $2 && $2 != -* ]] && { EXPORT_FILE=$2; shift; } ;;
+            -i|--import)   IMPORT_FILE=$2; shift ;;
             --remove)      REMOVE=$2; shift ;;
             -y|--yes)      ASSUME_YES=1 ;;
             -n|--dry-run)  DRY_RUN=1 ;;
@@ -1095,17 +1101,24 @@ splash() {
 # Drawn right under the splash (no full-screen dialog). Keys: ↑/↓ or j/k, enter, tab / shift+tab, a, q.
 # read_key [timeout]: read one key press, escape sequences included
 #   in:  $1 optional timeout in seconds
-#   out: KEY: up down enter tab backtab esc space backspace clear yes no all quit char other none (timeout);
+#   out: KEY: up down pgup pgdn home end enter tab backtab esc space backspace clear yes no all quit char other none (timeout);
 #        CH: the printable character, for typing
 read_key() {
     local k rest
     KEY=none CH=""
     IFS= read -rsn1 ${1:+-t "$1"} k || return 0
-    if [[ $k == $'\e' ]]; then IFS= read -rsn2 -t 0.05 rest; k+=$rest; fi
+    if [[ $k == $'\e' ]]; then
+        IFS= read -rsn2 -t 0.05 rest; k+=$rest
+        [[ $rest == \[[0-9] ]] && { IFS= read -rsn1 -t 0.05 rest; k+=$rest; }   # "\e[5~": PgUp and friends
+    fi
     case $k in
         $'\e[A')       KEY=up ;;
         $'\e[B')       KEY=down ;;
         $'\e[Z')       KEY=backtab ;;   # shift+tab
+        $'\e[5~')      KEY=pgup ;;
+        $'\e[6~')      KEY=pgdn ;;
+        $'\e[H'|$'\e[1~') KEY=home ;;
+        $'\e[F'|$'\e[4~') KEY=end ;;
         $'\e')         KEY=esc ;;
         $'\e'*)        KEY=other ;;
         '')            KEY=enter ;;
@@ -1325,7 +1338,7 @@ search_index() {
 #        "pending"); status 1 on shift+tab
 plugin_browser() {
     local LC_ALL=C.UTF-8 title=$1; shift
-    local ids=() descs=() st=() n i sel=0 focus=left right=0 q="" res=() rsel=0 roff=0 lofs=0 status=loading w=0 back=0
+    local ids=() descs=() st=() n i sel=0 focus=left right=0 q="" res=() rsel=0 roff=0 lofs=0 pofs=0 area=0 status=loading w=0 back=0
     local picks=() pdesc=() H B lw rw LK=() LI=() pfx="ros-$DISTRO-" name desc j
     while (( $# )); do ids+=("$1"); descs+=("$2"); st+=("$3"); shift 3; done
     n=${#ids[@]}
@@ -1383,19 +1396,36 @@ plugin_browser() {
 
     # browser_draw: draw the whole browser in one write
     #   in:  every local of plugin_browser (rows, focus, query, results, scroll offsets)
-    #   out: the screen; lw, rw, lofs, roff
+    #   out: the screen; lw, rw, lofs, pofs, area, roff
     browser_draw() {
-        local out="" r line row k idx mark cur text rb hc
+        local out="" r line row k idx mark cur text rb hc vis=() np=${#picks[@]} below
         lw=$(( right ? (COLS * 45 / 100) : COLS )); rw=$(( COLS - lw - 3 ))
-        (( sel < lofs )) && lofs=$sel; (( sel >= lofs + B )) && lofs=$(( sel - B + 1 ))
+        # Plugins and "find" stay put; the picks scroll on their own under a header row. A terminal too short
+        # for that scrolls the whole list instead. vis: the LK row on each screen row (-2 = the picks header).
+        area=$(( B - n - 2 ))
+        if (( np && area >= 3 )); then
+            (( sel > n && sel - n - 1 < pofs )) && pofs=$(( sel - n - 1 ))
+            (( sel > n && sel - n - 1 >= pofs + area )) && pofs=$(( sel - n - area ))
+            (( pofs > np - area )) && pofs=$(( np - area )); (( pofs < 0 )) && pofs=0
+            for (( k = 0; k <= n; k++ )); do vis+=("$k"); done
+            vis+=(-2)
+            for (( k = pofs; k < np && k < pofs + area; k++ )); do vis+=($(( n + 1 + k ))); done
+        else
+            (( sel < lofs )) && lofs=$sel; (( sel >= lofs + B )) && lofs=$(( sel - B + 1 ))
+            for (( k = lofs; k < ${#LK[@]} && k < lofs + B; k++ )); do vis+=("$k"); done
+        fi
         rb=$(( B - 2 ))
         (( rsel < roff )) && roff=$rsel; (( rsel >= roff + rb )) && roff=$(( rsel - rb + 1 ))
 
         hc=$C_CUR; [[ $focus == left ]] || hc=""   # the focused pane's header carries the accent
         printf -v line '\e[%d;1H\e[2K%s?%s %s%s%s' "$REG_TOP" "$C_CUR" "$C_RESET" "$C_BOLD$hc" "$title" "$C_RESET"; out+=$line
         for (( r = 0; r < B; r++ )); do
-            row=$(( REG_TOP + 1 + r )); k=$(( lofs + r )); text=""
-            if (( k < ${#LK[@]} )); then
+            row=$(( REG_TOP + 1 + r )); k=${vis[r]:--3}; text=""   # -3: below the list
+            if (( k == -2 )); then
+                below=$(( np - pofs - area )); (( below < 0 )) && below=0
+                printf -v text '  %s──%s %s%d %s%s  %s%s%s%s' "$C_SEP" "$C_RESET" "$C_DIM" "$np" "$(plural "$np" package packages)" "$C_RESET" \
+                    "$C_CUR" "$( (( pofs )) && echo "↑ $pofs  ")" "$( (( below )) && echo "↓ $below")" "$C_RESET"
+            elif (( k >= 0 )); then
                 idx=${LI[k]}
                 cur="  "; (( k == sel )) && cur="${C_CUR}❯${C_RESET} "
                 case ${LK[k]} in
@@ -1432,7 +1462,7 @@ plugin_browser() {
         done
         # key help sits under the focused pane and lists only that pane's keys
         if [[ $focus == right ]]; then keys TYPE search "↑/↓" move ENTER toggle TAB next ESC "close search"; fitv "$KEYS" "$rw"; k=$(( lw + 3 ))
-        else keys "↑/↓" move ENTER toggle TAB next $( (( CAN_BACK )) && echo SHIFT+TAB back) A all Q quit; fitv "$KEYS" $(( lw - 1 )); k=1; fi
+        else keys "↑/↓" move ENTER toggle TAB next $( (( CAN_BACK )) && echo SHIFT+TAB back) A all Q quit $( (( np > area )) && echo PGUP/PGDN page); fitv "$KEYS" $(( lw - 1 )); k=1; fi
         printf -v line '\e[%d;1H\e[2K\e[%d;%dH%s%s' $(( REG_TOP + H - 1 )) $(( REG_TOP + H - 1 )) "$k" "$FIT" "$C_RESET"; out+=$line
         printf '%s' "$out"
     }
@@ -1445,6 +1475,12 @@ plugin_browser() {
         if [[ $status == loading ]] && ! kill -0 "$PKG_INDEX_PID" 2>/dev/null; then
             [[ -s $PKG_INDEX ]] && status=ready || status=failed
             refilter
+            # picks that came without a description (-i, -p, an earlier visit): fill it in, and flag the missing
+            [[ $status == ready ]] && for j in "${!picks[@]}"; do
+                [[ -n ${pdesc[j]} ]] && continue
+                pdesc[j]=$(awk -F'\t' -v p="${picks[j]}" '$1 == p { print $2; exit }' "$PKG_INDEX")
+                pdesc[j]=${pdesc[j]:-"${C_ERR}not in the $(dname "$DISTRO") repository: skipped"}
+            done
         fi
         [[ $KEY == none ]] && continue
         if [[ $focus == right ]]; then
@@ -1452,6 +1488,10 @@ plugin_browser() {
             case $KEY in
                 up)        (( rsel > 0 )) && (( rsel-- )) ;;
                 down)      (( rsel < ${#res[@]} - 1 )) && (( rsel++ )) ;;
+                pgup)      rsel=$(( rsel > B - 2 ? rsel - B + 2 : 0 )) ;;
+                pgdn)      rsel=$(( rsel + B - 2 < ${#res[@]} ? rsel + B - 2 : (${#res[@]} ? ${#res[@]} - 1 : 0) )) ;;
+                home)      rsel=0 ;;
+                end)       (( ${#res[@]} )) && rsel=$(( ${#res[@]} - 1 )) ;;
                 enter)     (( ${#res[@]} )) && toggle_pick "${res[rsel]%%$'\t'*}" "${res[rsel]#*$'\t'}" ;;
                 backspace) q=${q%?}; refilter ;;
                 clear)     q=""; refilter ;;
@@ -1463,6 +1503,11 @@ plugin_browser() {
         case $KEY in
             up)    for (( i = 0; i < ${#LK[@]}; i++ )); do sel=$(( (sel - 1 + ${#LK[@]}) % ${#LK[@]} )); selectable "$sel" && break; done ;;
             down)  for (( i = 0; i < ${#LK[@]}; i++ )); do sel=$(( (sel + 1) % ${#LK[@]} )); selectable "$sel" && break; done ;;
+            pgup|pgdn|home|end)   # jump by a page of picks (or of the whole list), then settle on a selectable row
+                j=$(( area >= 3 ? area : B ))
+                case $KEY in pgup) sel=$(( sel - j )) ;; pgdn) sel=$(( sel + j )) ;; home) sel=0 ;; end) sel=$(( ${#LK[@]} - 1 )) ;; esac
+                (( sel < 0 )) && sel=0; (( sel >= ${#LK[@]} )) && sel=$(( ${#LK[@]} - 1 ))
+                for (( i = 0; i < ${#LK[@]}; i++ )); do selectable "$sel" && break; sel=$(( (sel + 1) % ${#LK[@]} )); done ;;
             enter)   # acts on the highlighted row, in both panes; tab / shift+tab leave the step
                 case ${LK[sel]} in
                     find) right=1 focus=right ;;
@@ -1519,7 +1564,7 @@ interactive() { (( ! ASSUME_YES )) && [[ -t 0 && -t 1 ]]; }
 
 # choose: decide MODE, then fill DISTRO / ROS_TYPE / WITH with inline prompts where flags didn't
 #   in:  the flags, INSTALLED, VALID_DISTROS, RECOMMENDED
-#   out: MODE, TARGET, DISTRO, ROS_TYPE, WITH, EXTRA_PKGS (+ answer lines on screen)
+#   out: MODE, TARGET, DISTRO, ROS_TYPE, WITH, EXTRA_PKGS (+ answer lines on screen); "export" writes the setup file and exits
 choose() {
     local items=() others=() d m state step=mode shown=() pending=0 lines CAN_BACK=0   # CAN_BACK: an earlier prompt to return to
     local distro_arg=$DISTRO type_arg=$ROS_TYPE bashrc_arg=$ADD_BASHRC
@@ -1564,11 +1609,13 @@ choose() {
                         (( ${#others[@]} )) && items+=(
                             replace  "Remove $tname, then install $(join " or " "${alt[@]}")"
                             parallel "Install $(join " or " "${alt[@]}") alongside $tname  ${C_ERR}⚠ not recommended${C_RESET}")
-                        items+=(remove "Uninstall $tname" quit "Leave everything as it is")
+                        items+=(export "Save this $tname setup to a file, to rebuild it on another machine with -i"
+                                remove "Uninstall $tname" quit "Leave everything as it is")
                         pick "ROS 2 $tname is already installed. What now?" extras "${items[@]}" || { go_back; continue; }
                         answered_step mode
                         MODE=$PICK
                         [[ $MODE == quit ]] && bye
+                        [[ $MODE == export ]] && { setup_write "$TARGET" "${EXPORT_FILE:-rosman-$TARGET.yaml}"; exit 0; }
                     else
                         MODE=extras
                     fi
@@ -2013,6 +2060,174 @@ cleanup() {
     [[ -t 1 ]] && tput cnorm
 }
 
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- Setup files -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
+# One machine's ROS 2 (distro, type, plugins, hand-picked packages) in a file, so another machine can be built the
+# same way: -e (or "export" in the menu) writes it, -i installs it. Plain YAML, so the planned GUI can read it too:
+#   distro: jazzy
+#   type: desktop          # desktop | base
+#   ubuntu: noble          # where it was exported: checked, not enforced
+#   arch: amd64
+#   plugins:
+#     - nav2
+#   packages:              # without ros-<distro>-, so -v can load it onto another distro
+#     - nav2-bt-navigator
+
+# setup_write <distro> <file>: save an installed distro's setup
+#   in:  $1 distro id, $2 path; MODULES, apt's manual marks, DRY_RUN (prints the file instead of writing it)
+#   out: the file; stdout: what was saved
+setup_write() {
+    local d=$1 file=$2 DISTRO=$1 m p type arch plugins=() pkgs=() skip
+    is_installed "$d" || die "ROS 2 $(dname "$d") isn't installed"
+    type=$(installed_type "$d") arch=$(dpkg --print-architecture)
+    skip=" ros-$d-desktop ros-$d-ros-base "
+    for m in "${MODULES[@]}"; do
+        mod_installed "${m%%|*}" || continue
+        plugins+=("$M_ID"); skip+="$M_PKGS "
+    done
+    # Only the top of the tree: installed by hand (apt's manual marks) and needed by no other installed ros-<d>-*
+    # package. Manual marks alone aren't enough (older installs mark nearly everything manual); dependencies come
+    # back on their own, and listing them would mark them manual on the new machine, beyond autoremove's reach.
+    while read -r p; do
+        [[ $skip == *" $p "* || $p == *-dbgsym ]] || pkgs+=("${p#"ros-$d-"}")
+    done < <(dpkg-query -W -f='${db:Status-Abbrev}\t${Package}\t${Pre-Depends}, ${Depends}\n' "ros-$d-*" 2>/dev/null |
+             awk -F'\t' '$1 ~ /^ii/ { have[$2] = 1; n = split($3, a, /[,|]/)
+                                      for (i = 1; i <= n; i++) { x = a[i]; sub(/^ +/, "", x); sub(/[ :(].*/, "", x); dep[x] = 1 } }
+                         END { for (p in have) if (!(p in dep)) print p }' | sort | comm -12 - <(apt-mark showmanual 2>/dev/null | sort))
+
+    # yaml_list <key> <items...>: one YAML block list ("key: []" when empty)
+    #   in:  $1 key, then the items
+    #   out: stdout
+    yaml_list() { local k=$1; shift; if (( $# )); then echo "$k:"; printf '  - %s\n' "$@"; else echo "$k: []"; fi; }
+    # setup_text: the whole file
+    #   in:  the locals of setup_write
+    #   out: stdout
+    setup_text() {
+        echo "# ROS Manager setup: ROS 2 $(dname "$d") on $(hostname), $(date '+%Y-%m-%d %H:%M')"
+        echo "# Rebuild it on another machine:  bash <(wget -qO- lnjstudios.com/ros-man) -i ${file##*/}"
+        echo "ros-manager: $RM_VERSION"
+        echo "distro: $d"
+        echo "type: ${type#ros-}"
+        echo "ubuntu: $CODENAME"
+        echo "arch: $arch"
+        yaml_list plugins "${plugins[@]}"
+        yaml_list packages "${pkgs[@]}"
+    }
+    if (( DRY_RUN )); then
+        echo -e "\n${C_DIM}  Dry run: would write $file:${C_RESET}\n"
+        setup_text | sed 's/^/    /'
+        echo
+        return 0
+    fi
+    setup_text >"$file" || die "Couldn't write $file"
+    echo -e "\n${C_DONE}✓${C_RESET} ${C_BOLD}Saved ROS 2 $(dname "$d")${C_RESET} ${C_CUR}$file${C_RESET}"
+    echo -e "  ${C_DIM}${type} · ${#plugins[@]} $(plural ${#plugins[@]} plugin plugins)$( (( ${#plugins[@]} )) && echo " (${plugins[*]})") · ${#pkgs[@]} $(plural ${#pkgs[@]} package packages)${C_RESET}"
+    echo -e "  Rebuild it elsewhere:  ${C_BOLD}bash <(wget -qO- lnjstudios.com/ros-man) -i ${file##*/}${C_RESET}\n"
+}
+
+# setup_export: -e: save a setup without the splash or any question, then exit
+#   in:  DISTRO (-v), ROS_DISTRO, INSTALLED, EXPORT_FILE
+#   out: see setup_write; dies when no distro is installed or it's unclear which one
+setup_export() {
+    local d=$DISTRO names=() x
+    if [[ -z $d ]]; then
+        if is_installed "$ROS_DISTRO"; then d=$ROS_DISTRO
+        elif (( ${#INSTALLED[@]} == 1 )); then d=${INSTALLED[0]}
+        elif (( ! ${#INSTALLED[@]} )); then die "No ROS 2 distro is installed, so there's nothing to export"
+        else
+            for x in "${INSTALLED[@]}"; do names+=("$(dname "$x") (-v $x)"); done
+            die "Several ROS 2 distros are installed: $(join ", " "${names[@]}"). Pick one with -v"
+        fi
+    fi
+    setup_write "$d" "${EXPORT_FILE:-rosman-$d.yaml}"
+}
+
+# setup_load: read the -i setup file, check it against this machine and preset the choices from it
+#   in:  IMPORT_FILE (a path or an http(s) URL); DISTRO / ROS_TYPE / WITH from flags win over the file;
+#        VALID_DISTROS, CODENAME, ROS_DISTRO, INSTALLED, RECOMMENDED
+#   out: DISTRO, ROS_TYPE, WITH, EXTRA_PKGS (not yet installed only, so the plugin browser shows them as picks);
+#        a short report on screen. A distro this Ubuntu can't run is swapped for the installed (else recommended)
+#        one after an "untested" warning, asked when interactive; dies on a file it can't use or a -v that can't run
+setup_load() {
+    local text line key val f_distro="" f_type="" f_ubuntu="" f_arch="" plugins=() pkgs=() bad=() p have=0 here add_desktop=0 alt moved=0 v_arg=$DISTRO
+    if [[ $IMPORT_FILE == http://* || $IMPORT_FILE == https://* ]]; then
+        text=$(FETCH_TIMEOUT=15 fetch "$IMPORT_FILE") || die "Couldn't download $IMPORT_FILE"
+    else
+        [[ -r $IMPORT_FILE ]] || die "Can't read $IMPORT_FILE"
+        text=$(<"$IMPORT_FILE")
+    fi
+    while IFS= read -r line; do
+        line=${line%%#*}; line=${line%"${line##*[![:space:]]}"}   # drop comments and trailing blanks
+        if [[ $line =~ ^[[:space:]]+-[[:space:]]*(.+)$ ]]; then
+            val=${BASH_REMATCH[1]//[\"\']/}
+            case $key in plugins) plugins+=("$val") ;; packages) pkgs+=("$val") ;; esac
+        elif [[ $line =~ ^([a-z-]+):[[:space:]]*(.*)$ ]]; then
+            key=${BASH_REMATCH[1]} val=${BASH_REMATCH[2]//[\"\']/}
+            case $key in distro) f_distro=$val ;; type) f_type=$val ;; ubuntu) f_ubuntu=$val ;; arch) f_arch=$val ;; esac
+        fi
+    done <<<"$text"
+    # the file ends up in apt arguments and paths: ids only
+    [[ $f_distro =~ ^[a-z]+$ ]] || die "$IMPORT_FILE isn't a ROS Manager setup file (no valid 'distro:')"
+    [[ $f_type == base ]] && f_type=ros-base
+    [[ -z $f_type || $f_type =~ ^(desktop|ros-base)$ ]] || die "Unknown type '$f_type' in $IMPORT_FILE (desktop | base)"
+
+    echo
+    # untested <distro>: the warning for packages carried over to a distro they weren't picked on
+    #   in:  $1 distro id
+    #   out: stdout (say)
+    untested() {
+        say "  Package names are the same across distros; any that $(dname "$1") doesn't have are skipped."
+        say "  ${C_ERR}⚠ Caution${C_RESET}${C_DIM}: any untested pair can cause unintended behaviour. Please be sure to test it before deploying!${C_RESET}"
+    }
+    answered "Setup" "$IMPORT_FILE"
+    if [[ -n $DISTRO && $DISTRO != "$f_distro" ]]; then
+        warn "The setup is for $(dname "$f_distro"); loading it onto $(dname "$DISTRO") as asked with -v"
+        untested "$DISTRO"; moved=1
+    fi
+    DISTRO=${DISTRO:-$f_distro} ROS_TYPE=${ROS_TYPE:-$f_type}
+    if ! is_installed "$DISTRO" && [[ " ${VALID_DISTROS[*]} " != *" $DISTRO "* ]]; then
+        [[ -n $v_arg ]] && die "ROS 2 $(dname "$DISTRO") isn't built for $(ubuntu_name "$CODENAME")"   # -v asked for it: no second guess
+        # The distro can't run here (another Ubuntu, end of life): carry the packages over to the distro in use,
+        # else the recommended one. Package names rarely change between distros.
+        alt=$ROS_DISTRO; is_installed "$alt" || alt=${INSTALLED[0]:-$RECOMMENDED}
+        [[ -n $alt ]] || die "ROS 2 $(dname "$DISTRO") isn't built for $(ubuntu_name "$CODENAME"), and no other ROS 2 distro is yet"
+        warn "This setup is ROS 2 $(dname "$DISTRO")${f_ubuntu:+ from $(ubuntu_name "$f_ubuntu")}, which isn't built for $(ubuntu_name "$CODENAME")"
+        untested "$alt"
+        if interactive; then echo; confirm "Load it onto $(dname "$alt") $(is_installed "$alt" && echo "(installed)" || echo instead)?" y || bye; fi
+        DISTRO=$alt moved=1
+    fi
+
+    WITH+=" ${plugins[*]}"
+    for p in "${pkgs[@]}"; do
+        p=${p#"ros-$f_distro-"}   # a hand-edited file may have full names
+        if [[ ! $p =~ ^[a-z0-9][a-z0-9.+-]*$ ]]; then bad+=("$p")
+        elif pkg_installed "ros-$DISTRO-$p"; then (( have++ ))
+        else EXTRA_PKGS+=("ros-$DISTRO-$p"); fi
+    done
+    # same distro already here as ros-base, setup wants desktop: add desktop as a package (extras mode keeps the base)
+    if is_installed "$DISTRO" && [[ $f_type == desktop && $(installed_type "$DISTRO") == ros-base ]]; then
+        EXTRA_PKGS+=("ros-$DISTRO-desktop") add_desktop=1
+    fi
+
+    say "${C_DIM}ROS 2 $(dname "$DISTRO") · ${ROS_TYPE#ros-} · ${#plugins[@]} $(plural ${#plugins[@]} plugin plugins) · ${#pkgs[@]} $(plural ${#pkgs[@]} package packages)$( (( have )) && echo " ($have already installed)")${C_RESET}"
+    if [[ -z $f_ubuntu || $f_ubuntu == "$CODENAME" ]]; then
+        ok "Same Ubuntu: $(ubuntu_name "$CODENAME")"
+    elif (( ! moved )); then   # a moved setup already got the stronger warning
+        warn "Exported on $(ubuntu_name "$f_ubuntu"), this is $(ubuntu_name "$CODENAME"): packages missing here are skipped"
+    fi
+    [[ -n $f_arch && $f_arch != "$(dpkg --print-architecture)" ]] &&
+        warn "Exported on $f_arch, this is $(dpkg --print-architecture): packages missing here are skipped"
+    here=$(detect_type)
+    if is_installed "$DISTRO"; then :   # the type only matters for a new install
+    elif [[ $ROS_TYPE == desktop && $here == ros-base ]]; then
+        warn "The setup is desktop, but this machine looks headless: RViz, rqt and their GUI libraries come with it (-t base to skip)"
+    elif [[ $ROS_TYPE == ros-base && $here == desktop ]]; then
+        say "${C_DIM}The setup is base (no RViz, rqt) although this machine has a desktop${C_RESET}"
+    fi
+    (( ${#bad[@]} )) && warn "Ignored, not package names: ${bad[*]}"
+    (( add_desktop )) && say "${C_DIM}$(dname "$DISTRO") is installed as ros-base here: ros-$DISTRO-desktop is added as a package${C_RESET}"
+    echo
+}
+
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- main -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-#
 # main <args...>: the whole run: flags, splash, questions, plan, install, finish
 #   in:  the script's arguments
@@ -2021,6 +2236,7 @@ main() {
     ORIG_ARGS=("$@")
     parse_args "$@"
     [[ $ID == ubuntu ]] || die "ROS Manager only supports Ubuntu (found: $ID)"
+    if (( EXPORT )); then detect_installed; setup_export; exit 0; fi
     mkdir -p "$LOG_DIR" && : >"$LOGFILE"
     trap cleanup EXIT
     trap 'die "Interrupted by $(whoami)"' INT TERM
@@ -2029,6 +2245,7 @@ main() {
     detect_installed
     splash
     discover_finish
+    [[ -n $IMPORT_FILE ]] && setup_load
     choose
     validate
     plan

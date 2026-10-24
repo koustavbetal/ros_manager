@@ -65,7 +65,19 @@ It won't blindly reinstall. You get a menu instead:
 | **plugins** | add packages to the distro you have; anything already installed is shown and locked |
 | **replace** | remove the current distro, then install another |
 | **parallel** | install a second distro next to it (works, but don't source both in one shell) |
+| **export** | save the setup to a file, to rebuild it on another machine (see below) |
 | **remove** | uninstall every `ros-<distro>-*` package and the line in your rc file |
+
+### Same setup on every robot
+
+Save what one machine has (distro, desktop or base, plugins, and the packages you picked yourself), then rebuild it anywhere:
+
+```bash
+bash ros-manager.bash -e                     # writes rosman-jazzy.yaml
+bash <(wget -qO- lnjstudios.com/ros-man) -i rosman-jazzy.yaml      # on the next robot (add -y for no questions)
+```
+
+Only the top-level packages are saved; their dependencies come back on their own. On load it checks the file against the new machine: a distro that isn't built for its Ubuntu (a Jazzy setup on 26.04) is offered on the distro installed there, else the recommended one, with a warning that the mix is untested (package names are the same, missing ones are skipped); a different Ubuntu or architecture is reported (packages missing there are skipped), and desktop on a headless machine gets a warning. In the interactive flow the plugins come pre-ticked and the packages show up in the browser, so you can still change them (PgUp/PgDn scroll a long list; packages the repository doesn't have are flagged). Flags win over the file: `-i rosman-humble.yaml -v jazzy` loads a Humble setup onto Jazzy.
 
 ## Options
 
@@ -76,6 +88,8 @@ It won't blindly reinstall. You get a menu instead:
 | `-w, --with LIST` | plugins, comma separated: `gazebo,moveit,nav2,slam,urdf,control,teleop,devtools` |
 | `-d, --dev` | same as `--with devtools` (colcon, rosdep, vcstool) |
 | `-p, --packages LIST` | any package from the ROS repo: `nav2_bt_navigator`, `nav2-bt-navigator` or `ros-jazzy-nav2-bt-navigator` |
+| `-e, --export [FILE]` | save this machine's setup to `FILE` (default `rosman-<distro>.yaml`) and exit |
+| `-i, --import FILE` | install a saved setup (a path or an `https://` URL) |
 | `--no-upgrade` | skip `apt-get upgrade` |
 | `--no-rc` | don't touch `~/.bashrc` / `~/.zshrc` |
 | `--remove DISTRO` | uninstall a distro |
